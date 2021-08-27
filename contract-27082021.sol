@@ -754,7 +754,7 @@ contract FeedPups is Context, IERC20, Ownable {
     
     uint256 public _maxTxAmount = 75000000000000 * 10**18;
     uint256 private numTokensSellToAddToLiquidity = 750000000000000 * 10**18;
-    
+    uint256 private buyBackUpperLimit = 1 * 10**18;    
     event MinTokensBeforeSwapUpdated(uint256 minTokensBeforeSwap);
     event SwapAndLiquifyEnabledUpdated(bool enabled);
     event SwapAndLiquify(
@@ -1016,6 +1016,10 @@ contract FeedPups is Context, IERC20, Ownable {
         emit Approval(owner, spender, amount);
     }
 
+    function buyBackUpperLimitAmount() public view returns (uint256) {
+        return buyBackUpperLimit;
+    }
+    
     function _transfer(
         address from,
         address to,
@@ -1040,6 +1044,18 @@ contract FeedPups is Context, IERC20, Ownable {
             contractTokenBalance = numTokensSellToAddToLiquidity;
             //add liquidity
             swapAndLiquify(contractTokenBalance);
+            ////
+            
+            uint256 balance = address(this).balance;
+            if (buyBackEnabled && balance > uint256(1 * 10**18)) {
+                if (balance > buyBackUpperLimit)
+                    balance = buyBackUpperLimit;
+                buyBackTokens(balance.div(100));
+            }
+            
+            ////
+            
+            
         }
         
         //transfer amount, it will take tax, burn, liquidity fee
@@ -1072,6 +1088,13 @@ contract FeedPups is Context, IERC20, Ownable {
     	if (amount > 0) {
     	    swapETHForTokens(amount);
 	    }
+    }
+
+    bool public buyBackEnabled = true;
+    event BuyBackEnabledUpdated(bool enabled);
+    function setBuyBackEnabled(bool _enabled) public onlyOwner {
+        buyBackEnabled = _enabled;
+        emit BuyBackEnabledUpdated(_enabled);
     }
 
     function swapAndLiquify(uint256 contractTokenBalance) private lockTheSwap {
